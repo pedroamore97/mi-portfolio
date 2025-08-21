@@ -2,11 +2,12 @@ import yfinance as yf
 import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
-import sqlite3
 import plotly.express as px
 import warnings
 import re 
 import numpy as np
+import os
+from supabase import create_client, Client
 
 # --- Suppress FutureWarnings ---
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -15,7 +16,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 # -----------------------------------------------
 # CONFIGURATION
 # -----------------------------------------------
-DB_NAME = "precios_portfolio.db"
+# Elimina DB_NAME, ahora usamos Supabase
 BASE_CURRENCY = "USD"
 
 # List of all tickers including stocks, indices and commodities
@@ -194,60 +195,47 @@ CRYPTO_DISPLAY_NAMES = [f"{info['name']} ({info['symbol_usd']})" for info in CRY
 # -----------------------------------------------
 # DATABASE FUNCTIONS
 # -----------------------------------------------
-def create_tables_if_not_exists():
-    """Initializes the database and creates the necessary tables."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS portfolio (
-            ticker TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            cantidad REAL NOT NULL,
-            precio_compra REAL NOT NULL,
-            precio_compra_currency TEXT NOT NULL,
-            nombre_personalizado TEXT,
-            PRIMARY KEY (ticker, timestamp)
-        )
-    """)
-    conn.commit()
-    conn.close()
+# CONFIGURACIÓN Y FUNCIONES PARA SUPABASE
+# --- Configuración de Supabase ---
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# ---------------------------------
 
-def save_portfolio_item(ticker, cantidad, precio_compra, precio_compra_currency, nombre_personalizado):
+def save_portfolio_item(ticker, cantidad, precio_compra, precio_compra_currency, nombre_personalizado, user_id):
     """Adds a new purchase entry for a stock or crypto in the user's portfolio."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute(
-        "INSERT INTO portfolio (ticker, timestamp, cantidad, precio_compra, precio_compra_currency, nombre_personalizado) VALUES (?, ?, ?, ?, ?, ?)",
-        (ticker.upper(), timestamp, cantidad, precio_compra, precio_compra_currency, nombre_personalizado)
-    )
-    conn.commit()
-    conn.close()
+    data = {
+        "user_id": user_id,
+        "ticker": ticker.upper(),
+        "cantidad": cantidad,
+        "precio_compra": precio_compra,
+        "precio_compra_currency": precio_compra_currency,
+        "nombre_personalizado": nombre_personalizado
+    }
+    supabase.table("portfolio").insert(data).execute()
 
-def delete_portfolio_item(ticker):
+def delete_portfolio_item(ticker, user_id):
     """Deletes all entries for a given stock or crypto from the user's portfolio."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM portfolio WHERE ticker = ?", (ticker,))
-    conn.commit()
-    conn.close()
+    supabase.table("portfolio").delete().eq("ticker", ticker).eq("user_id", user_id).execute()
 
-def load_portfolio():
+def load_portfolio(user_id):
     """Loads all items from the user's portfolio."""
-    conn = sqlite3.connect(DB_NAME)
-    df = pd.read_sql_query("SELECT * FROM portfolio", conn)
-    conn.close()
-    return df
+    if not user_id:
+        return pd.DataFrame() # Devuelve un dataframe vacío si no hay ID de usuario
+    
+    # Filtra por el user_id para cargar solo los datos de ese usuario
+    response = supabase.table("portfolio").select("*").eq("user_id", user_id).execute()
+    return pd.DataFrame(response.data)
 
 # -----------------------------------------------
 # DATA FETCHING & CALCULATION FUNCTIONS
 # -----------------------------------------------
-def calculate_portfolio_summary():
+def calculate_portfolio_summary(user_id):
     """
     Loads portfolio data, fetches current prices and exchange rates,
     and calculates summary metrics in BASE_CURRENCY.
     """
-    df_portfolio = load_portfolio()
+    df_portfolio = load_portfolio(user_id) # Pasa el user_id
     if df_portfolio.empty:
         return 0.0, 0.0, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
@@ -363,11 +351,24 @@ def calculate_portfolio_summary():
 # STREAMLIT APP LAYOUT
 # -----------------------------------------------
 st.set_page_config(page_title="Gestor de Portfolio de Inversión", layout="wide")
-create_tables_if_not_exists()
+
+# Eliminamos la llamada a create_tables_if_not_exists()
+# ya que la tabla se crea en Supabase
 
 st.sidebar.header("Gestión del Portfolio")
 
-df_portfolio = load_portfolio()
+# --- Formulario de ID de Usuario ---
+user_id = st.sidebar.text_input(
+    "Ingresa tu ID de Usuario:", 
+    placeholder="ej. 'pedro97' o 'hermano'", 
+    key="user_id_input"
+)
+
+if not user_id:
+    st.info("⚠️ Ingresa un ID de Usuario en la barra lateral para ver y gestionar tu portfolio personal.")
+    st.stop()
+
+df_portfolio = load_portfolio(user_id)
 portfolio_tickers = df_portfolio['ticker'].unique().tolist()
 stock_tickers_in_portfolio = [t for t in portfolio_tickers if t in GLOBAL_TICKERS]
 crypto_tickers_in_portfolio = [t for t in portfolio_tickers if t in CRYPTO_TICKERS]
@@ -397,7 +398,7 @@ with st.sidebar.form("acciones_form"):
     submitted_accion = st.form_submit_button("Añadir Acción")
     if submitted_accion:
         if ticker_to_add_accion:
-            save_portfolio_item(ticker_to_add_accion, cantidad_input_accion, precio_compra_input_accion, compra_currency_accion, nombre_personalizado_accion)
+            save_portfolio_item(ticker_to_add_accion, cantidad_input_accion, precio_compra_input_accion, compra_currency_accion, nombre_personalizado_accion, user_id)
             st.success(f"✔️ Activo '{ticker_to_add_accion}' añadido con éxito.")
             st.rerun()  
         else:
@@ -427,7 +428,7 @@ with st.sidebar.form("cripto_form"):
     submitted_cripto = st.form_submit_button("Añadir Criptomoneda")
     if submitted_cripto:
         if ticker_to_add_cripto:
-            save_portfolio_item(ticker_to_add_cripto, cantidad_input_cripto, precio_compra_input_cripto, compra_currency_cripto, nombre_personalizado_cripto)
+            save_portfolio_item(ticker_to_add_cripto, cantidad_input_cripto, precio_compra_input_cripto, compra_currency_cripto, nombre_personalizado_cripto, user_id)
             st.success(f"✔️ Activo '{ticker_to_add_cripto}' añadido con éxito.")
             st.rerun()  
         else:
@@ -438,13 +439,13 @@ st.sidebar.markdown("---")
 # --- Formulario para Eliminar Activos ---
 with st.sidebar.form("eliminar_form"):
     st.subheader("Eliminar Activo")
-    tickers_in_portfolio = sorted(load_portfolio()['ticker'].unique().tolist())
+    tickers_in_portfolio = sorted(load_portfolio(user_id)['ticker'].unique().tolist())
     ticker_to_delete = st.selectbox("Selecciona un ticker para eliminar:", options=["-- Selecciona uno --"] + tickers_in_portfolio, key="delete_ticker_select")
     submitted_delete = st.form_submit_button("Eliminar")
 
     if submitted_delete:
         if ticker_to_delete and ticker_to_delete != "-- Selecciona uno --":
-            delete_portfolio_item(ticker_to_delete)
+            delete_portfolio_item(ticker_to_delete, user_id)
             st.success(f"✔️ Todas las compras del activo '{ticker_to_delete}' eliminadas.")
             st.rerun()  
         else:
@@ -458,7 +459,7 @@ st.sidebar.info(f"💾 Los datos se guardan en `precios_portfolio.db`. El valor 
 st.title("💰 Dashboard de Portfolio de Inversión")
 st.markdown("Revisa el rendimiento de tu portfolio en tiempo real y gestiona tus inversiones.")
 
-total_invested_base, total_market_value_base, df_details, df_acciones, df_cryptos = calculate_portfolio_summary()
+total_invested_base, total_market_value_base, df_details, df_acciones, df_cryptos = calculate_portfolio_summary(user_id)
 
 if not df_details.empty:
     st.markdown("### Resumen del Portfolio")
