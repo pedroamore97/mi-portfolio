@@ -36,7 +36,7 @@ Sigue estos pasos para correr la aplicación en tu propio ordenador:
 
 2.  **Crea un entorno virtual (opcional pero recomendado):**
     ```bash
-    python -m venv venv_bolsa
+    python3 -m venv venv_bolsa
     source venv_bolsa/bin/activate  # En Windows usa `venv_bolsa\Scripts\activate`
     ```
 
