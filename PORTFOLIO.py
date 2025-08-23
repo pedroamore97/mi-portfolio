@@ -107,6 +107,13 @@ st.markdown(
         background-color: #f0f2f6; 
         border-right: 1px solid #e0e0e0;
     }
+    
+    /* Regla para la barra lateral */
+    section[data-testid="stSidebar"] {
+        width: 33% !important;
+        background-color: #f0f2f6;
+        border-right: 1px solid #e0e0e0;
+    }
     </style>
     """,
     unsafe_allow_html=True
