@@ -197,8 +197,9 @@ CRYPTO_DISPLAY_NAMES = [f"{info['name']} ({info['symbol_usd']})" for info in CRY
 # -----------------------------------------------
 # CONFIGURACIÓN Y FUNCIONES PARA SUPABASE
 # --- Configuración de Supabase ---
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+# --- Configuración de Supabase ---
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ---------------------------------
 
