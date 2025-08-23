@@ -8,7 +8,7 @@ import re
 import numpy as np
 import os
 from supabase import create_client, Client
-import bcrypt
+import bcrypt  # type: ignore
 
 # --- Suppress FutureWarnings ---
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -432,13 +432,17 @@ if not st.session_state.logged_in:
             if new_password == confirm_password:
                 success, message = register_user(new_username, new_password)
                 if success:
-                    st.sidebar.success(message)
+                    # Inicia sesión automáticamente después de un registro exitoso
+                    st.session_state.logged_in = True
+                    st.session_state.username = new_username
+                    st.sidebar.success(message + " ¡Iniciando sesión!")
+                    st.rerun()
                 else:
                     st.sidebar.error(message)
             else:
-                st.sidebar.error("❌ Las contraseñas no coinciden.")
+                st.sidebar.error("❌ Las contraseñas no coinciden.")      
 
-    st.info("⚠️ Inicia sesión para ver tu portfolio.")
+    st.info("⚠️ Inicia sesión o crea una cuenta para ver tu portfolio.")
     st.stop()
 else:
     st.sidebar.success(f"¡Bienvenido, {st.session_state.username}!")
