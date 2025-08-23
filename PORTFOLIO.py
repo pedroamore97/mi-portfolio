@@ -403,6 +403,7 @@ if 'username' not in st.session_state:
 # -----------------------------------------------
 # AUTHENTICATION FORM (En la página principal)
 # -----------------------------------------------
+st.title("💰 Portfolio de Inversión")
 st.header("🔐 Autenticación de Usuario")
 
 if not st.session_state.logged_in:
