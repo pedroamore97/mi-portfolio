@@ -401,50 +401,53 @@ if 'username' not in st.session_state:
     st.session_state.username = None
 
 # -----------------------------------------------
-# AUTHENTICATION FORM (In the sidebar)
+# AUTHENTICATION FORM (En la página principal)
 # -----------------------------------------------
-st.sidebar.header("Autenticación de Usuario")
+st.header("🔐 Autenticación de Usuario")
 
 if not st.session_state.logged_in:
-    auth_choice = st.sidebar.radio("¿Ya tienes una cuenta?", ("Iniciar Sesión", "Crear Cuenta Nueva"))
+    auth_choice = st.radio("¿Ya tienes una cuenta?", ("Iniciar Sesión", "Crear Cuenta Nueva"))
 
     if auth_choice == "Iniciar Sesión":
-        username = st.sidebar.text_input("Nombre de Usuario", key="login_username_input")
-        password = st.sidebar.text_input("Contraseña", type="password", key="login_password_input")
-        if st.sidebar.button("Iniciar Sesión"):
+        st.subheader("Iniciar Sesión")
+        username = st.text_input("Nombre de Usuario", key="login_username_input")
+        password = st.text_input("Contraseña", type="password", key="login_password_input")
+        if st.button("Iniciar Sesión"):
             if username and password:
                 success, message = login_user(username, password)
                 if success:
                     st.session_state.logged_in = True
                     st.session_state.username = username
-                    st.sidebar.success(message)
+                    st.success(message)
                     st.rerun()
                 else:
-                    st.sidebar.error(message)
+                    st.error(message)
             else:
-                st.sidebar.warning("Por favor, ingresa tu nombre de usuario y contraseña.")
+                st.warning("Por favor, ingresa tu nombre de usuario y contraseña.")
 
     elif auth_choice == "Crear Cuenta Nueva":
-        new_username = st.sidebar.text_input("Nombre de Usuario Nuevo", key="register_username_input")
-        new_password = st.sidebar.text_input("Contraseña Nueva", type="password", key="register_password_input")
-        confirm_password = st.sidebar.text_input("Repetir Contraseña", type="password", key="confirm_password_input")
-        if st.sidebar.button("Crear Cuenta"):
+        st.subheader("Crear Cuenta Nueva")
+        new_username = st.text_input("Nombre de Usuario Nuevo", key="register_username_input")
+        new_password = st.text_input("Contraseña Nueva", type="password", key="register_password_input")
+        confirm_password = st.text_input("Repetir Contraseña", type="password", key="confirm_password_input")
+        if st.button("Crear Cuenta"):
             if new_password == confirm_password:
                 success, message = register_user(new_username, new_password)
                 if success:
                     # Inicia sesión automáticamente después de un registro exitoso
                     st.session_state.logged_in = True
                     st.session_state.username = new_username
-                    st.sidebar.success(message + " ¡Iniciando sesión!")
+                    st.success(message + " ¡Iniciando sesión!")
                     st.rerun()
                 else:
-                    st.sidebar.error(message)
+                    st.error(message)
             else:
-                st.sidebar.error("❌ Las contraseñas no coinciden.")      
+                st.error("❌ Las contraseñas no coinciden.")      
 
     st.info("⚠️ Inicia sesión o crea una cuenta para ver tu portfolio.")
     st.stop()
 else:
+    # Si el usuario ha iniciado sesión, este bloque se ejecuta
     st.sidebar.success(f"¡Bienvenido, {st.session_state.username}!")
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state.logged_in = False
@@ -546,8 +549,7 @@ with st.sidebar.form("eliminar_form"):
             st.warning("⚠️ Debes seleccionar un ticker para eliminar.")
 
 st.sidebar.markdown("---")
-st.sidebar.info("✨ Utiliza `yf.download` para obtener los precios más recientes.")
-st.sidebar.info(f"💾 Los datos se guardan en `precios_portfolio.db`. El valor total se calcula en {BASE_CURRENCY}.")
+st.sidebar.info(f"El valor total se calcula en {BASE_CURRENCY}.")
 
 # --- MAIN CONTENT: Dashboard ---
 st.title("💰 Dashboard de Portfolio de Inversión")
