@@ -81,38 +81,72 @@ CRYPTO_TICKERS = [info["symbol_usd"] for info in CRYPTO_TICKERS_INFO.values()]
 st.markdown(
     """
     <style>
-    section.main .block-container {
+    /* Estilos para el contenedor principal y las columnas */
+    section.main > div.block-container {
         max-width: 100% !important;
-        padding-top: 1rem;
-        padding-right: 1rem;
-        padding-left: 1rem;
-        padding-bottom: 1rem;
+        padding: 1rem;
     }
-    
-    section.main .block-container > div {
+    div[data-testid="stHorizontalBlock"] {
         display: flex;
         flex-direction: row;
     }
-    
-    .st-emotion-cache-18j2v2n {
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) {
         flex: 3;
     }
-
-    .st-emotion-cache-1y4y1h6 {
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) {
         flex: 2;
     }
     
-    .st-emotion-cache-6q9sum {
-        width: 100% !important;
-        background-color: #f0f2f6; 
-        border-right: 1px solid #e0e0e0;
-    }
-    
-    /* Regla para la barra lateral */
+    /* Estilos para la barra lateral */
     section[data-testid="stSidebar"] {
-        width: 33% !important;
         background-color: #f0f2f6;
         border-right: 1px solid #e0e0e0;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# -----------------------------------------------
+# INICIALIZAR EL ANCHO DE LA BARRA LATERAL CON JAVASCRIPT
+# -----------------------------------------------
+st.html("""
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const sidebar = document.querySelector('[data-testid="stSidebar"]');
+            if (sidebar) {
+                sidebar.style.width = '33%';
+            }
+        });
+    </script>
+""")
+
+# -----------------------------------------------
+
+st.markdown(
+    """
+    <style>
+    /* Estilos para los contenedores de los gráficos de pastel */
+    .st-emotion-cache-1f1q7x4 {
+        display: flex;
+        justify-content: center;
+    }
+    
+    .st-emotion-cache-1f1q7x4 > div {
+        flex: 1;
+        padding: 0 10px;
+    }
+
+    .st-emotion-cache-1f1q7x4 .stPlotlyChart {
+        height: 100%;
+        width: 100%;
+        display: block;
+    }
+    
+    .st-emotion-cache-1f1q7x4 .plotly-graph-div {
+        height: 100% !important;
+        width: 100% !important;
+        display: block;
     }
     </style>
     """,
