@@ -4,3 +4,4 @@ yfinance
 plotly-express
 numpy
 supabase
+bcrypt
