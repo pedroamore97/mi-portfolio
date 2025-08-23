@@ -8,6 +8,7 @@ import re
 import numpy as np
 import os
 from supabase import create_client, Client
+import bcrypt
 
 # --- Suppress FutureWarnings ---
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -202,6 +203,47 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ---------------------------------
 
+# -----------------------------------------------
+# AUTHENTICATION FUNCTIONS
+# -----------------------------------------------
+def hash_password(password):
+    """Hashes a password using bcrypt."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password, hashed_password):
+    """Verifies a password against a stored hash."""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+def register_user(username, password):
+    """Registers a new user in the database."""
+    try:
+        # Check if username already exists
+        response = supabase.table("users").select("username").eq("username", username).execute()
+        if response.data:
+            return False, "❌ El nombre de usuario ya existe."
+        
+        hashed_pw = hash_password(password)
+        data = {"username": username, "password": hashed_pw}
+        supabase.table("users").insert(data).execute()
+        return True, "✔️ ¡Registro exitoso! Ya puedes iniciar sesión."
+    except Exception as e:
+        return False, f"❌ Error en el registro: {e}"
+
+def login_user(username, password):
+    """Logs in an existing user."""
+    try:
+        response = supabase.table("users").select("password").eq("username", username).execute()
+        if not response.data:
+            return False, "❌ Usuario no encontrado."
+        
+        stored_hash = response.data[0]['password']
+        if verify_password(password, stored_hash):
+            return True, "✔️ ¡Inicio de sesión exitoso!"
+        else:
+            return False, "❌ Contraseña incorrecta."
+    except Exception as e:
+        return False, f"❌ Error en el inicio de sesión: {e}"
+
 def save_portfolio_item(ticker, cantidad, precio_compra, precio_compra_currency, nombre_personalizado, user_id):
     """Adds a new purchase entry for a stock or crypto in the user's portfolio."""
     data = {
@@ -352,20 +394,65 @@ def calculate_portfolio_summary(user_id):
 # -----------------------------------------------
 st.set_page_config(page_title="Gestor de Portfolio de Inversión", layout="wide")
 
+# --- Initialize session state for user authentication ---
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'username' not in st.session_state:
+    st.session_state.username = None
+
+# -----------------------------------------------
+# AUTHENTICATION FORM (In the sidebar)
+# -----------------------------------------------
+st.sidebar.header("Autenticación de Usuario")
+
+if not st.session_state.logged_in:
+    auth_choice = st.sidebar.radio("¿Ya tienes una cuenta?", ("Iniciar Sesión", "Crear Cuenta Nueva"))
+
+    if auth_choice == "Iniciar Sesión":
+        username = st.sidebar.text_input("Nombre de Usuario", key="login_username_input")
+        password = st.sidebar.text_input("Contraseña", type="password", key="login_password_input")
+        if st.sidebar.button("Iniciar Sesión"):
+            if username and password:
+                success, message = login_user(username, password)
+                if success:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.sidebar.success(message)
+                    st.rerun()
+                else:
+                    st.sidebar.error(message)
+            else:
+                st.sidebar.warning("Por favor, ingresa tu nombre de usuario y contraseña.")
+
+    elif auth_choice == "Crear Cuenta Nueva":
+        new_username = st.sidebar.text_input("Nombre de Usuario Nuevo", key="register_username_input")
+        new_password = st.sidebar.text_input("Contraseña Nueva", type="password", key="register_password_input")
+        confirm_password = st.sidebar.text_input("Repetir Contraseña", type="password", key="confirm_password_input")
+        if st.sidebar.button("Crear Cuenta"):
+            if new_password == confirm_password:
+                success, message = register_user(new_username, new_password)
+                if success:
+                    st.sidebar.success(message)
+                else:
+                    st.sidebar.error(message)
+            else:
+                st.sidebar.error("❌ Las contraseñas no coinciden.")
+
+    st.info("⚠️ Inicia sesión para ver tu portfolio.")
+    st.stop()
+else:
+    st.sidebar.success(f"¡Bienvenido, {st.session_state.username}!")
+    if st.sidebar.button("Cerrar Sesión"):
+        st.session_state.logged_in = False
+        st.session_state.username = None
+        st.rerun()
+
+# -----------------------------------------------
+# GESTIÓN DEL PORTFOLIO (Only visible if logged in)
+# -----------------------------------------------
 st.sidebar.header("Gestión del Portfolio")
 
-# --- Formulario de ID de Usuario ---
-user_id = st.sidebar.text_input(
-    "Ingresa tu ID de Usuario:", 
-    placeholder="ej. 'usuario33'", 
-    key="user_id_input"
-)
-
-if not user_id:
-    st.info("⚠️ Ingresa un ID de Usuario en la barra lateral para ver y gestionar tu portfolio personal.")
-    st.stop()
-
-# --- CAMBIOS REALIZADOS EN ESTA SECCIÓN ---
+user_id = st.session_state.username
 df_portfolio = load_portfolio(user_id)
 if not df_portfolio.empty:
     portfolio_tickers = df_portfolio['ticker'].unique().tolist()
@@ -375,7 +462,6 @@ else:
     portfolio_tickers = []
     stock_tickers_in_portfolio = []
     crypto_tickers_in_portfolio = []
-# --- FIN DE LOS CAMBIOS ---
 
 # --- Formulario para Añadir Acciones ---
 with st.sidebar.form("acciones_form"):
