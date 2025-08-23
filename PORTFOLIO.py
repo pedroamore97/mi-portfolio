@@ -197,7 +197,6 @@ CRYPTO_DISPLAY_NAMES = [f"{info['name']} ({info['symbol_usd']})" for info in CRY
 # -----------------------------------------------
 # CONFIGURACIÓN Y FUNCIONES PARA SUPABASE
 # --- Configuración de Supabase ---
-# --- Configuración de Supabase ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -353,15 +352,12 @@ def calculate_portfolio_summary(user_id):
 # -----------------------------------------------
 st.set_page_config(page_title="Gestor de Portfolio de Inversión", layout="wide")
 
-# Eliminamos la llamada a create_tables_if_not_exists()
-# ya que la tabla se crea en Supabase
-
 st.sidebar.header("Gestión del Portfolio")
 
 # --- Formulario de ID de Usuario ---
 user_id = st.sidebar.text_input(
     "Ingresa tu ID de Usuario:", 
-    placeholder="ej. 'pedro97' o 'hermano'", 
+    placeholder="ej. 'usuario33'", 
     key="user_id_input"
 )
 
@@ -369,10 +365,17 @@ if not user_id:
     st.info("⚠️ Ingresa un ID de Usuario en la barra lateral para ver y gestionar tu portfolio personal.")
     st.stop()
 
+# --- CAMBIOS REALIZADOS EN ESTA SECCIÓN ---
 df_portfolio = load_portfolio(user_id)
-portfolio_tickers = df_portfolio['ticker'].unique().tolist()
-stock_tickers_in_portfolio = [t for t in portfolio_tickers if t in GLOBAL_TICKERS]
-crypto_tickers_in_portfolio = [t for t in portfolio_tickers if t in CRYPTO_TICKERS]
+if not df_portfolio.empty:
+    portfolio_tickers = df_portfolio['ticker'].unique().tolist()
+    stock_tickers_in_portfolio = [t for t in portfolio_tickers if t in GLOBAL_TICKERS]
+    crypto_tickers_in_portfolio = [t for t in portfolio_tickers if t in CRYPTO_TICKERS]
+else:
+    portfolio_tickers = []
+    stock_tickers_in_portfolio = []
+    crypto_tickers_in_portfolio = []
+# --- FIN DE LOS CAMBIOS ---
 
 # --- Formulario para Añadir Acciones ---
 with st.sidebar.form("acciones_form"):
@@ -440,7 +443,7 @@ st.sidebar.markdown("---")
 # --- Formulario para Eliminar Activos ---
 with st.sidebar.form("eliminar_form"):
     st.subheader("Eliminar Activo")
-    tickers_in_portfolio = sorted(load_portfolio(user_id)['ticker'].unique().tolist())
+    tickers_in_portfolio = sorted(portfolio_tickers)
     ticker_to_delete = st.selectbox("Selecciona un ticker para eliminar:", options=["-- Selecciona uno --"] + tickers_in_portfolio, key="delete_ticker_select")
     submitted_delete = st.form_submit_button("Eliminar")
 
