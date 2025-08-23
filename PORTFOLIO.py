@@ -403,10 +403,10 @@ if 'username' not in st.session_state:
 # -----------------------------------------------
 # AUTHENTICATION FORM (En la página principal)
 # -----------------------------------------------
-st.title("💰 Portfolio de Inversión")
-st.header("🔐 Autenticación de Usuario")
 
 if not st.session_state.logged_in:
+    st.title("💰 Portfolio de Inversión")
+    st.header("🔐 Autenticación de Usuario")
     auth_choice = st.radio("¿Ya tienes una cuenta?", ("Iniciar Sesión", "Crear Cuenta Nueva"))
 
     if auth_choice == "Iniciar Sesión":
@@ -438,7 +438,7 @@ if not st.session_state.logged_in:
                     # Inicia sesión automáticamente después de un registro exitoso
                     st.session_state.logged_in = True
                     st.session_state.username = new_username
-                    st.success(message + " ¡Iniciando sesión!")
+                    st.success(message + " ¡Iniciando sesión automáticamente!")
                     st.rerun()
                 else:
                     st.error(message)
@@ -479,7 +479,7 @@ with st.sidebar.form("acciones_form"):
         options=["-- Selecciona uno --", "Otro"] + sorted(GLOBAL_DISPLAY_NAMES),
         key="ticker_selector"
     )
-    ticker_manual = st.text_input("Escribe el Ticker de la Acción:", value="", key="ticker_manual_input_key").upper()
+    ticker_manual = st.text_input("Escribe el Ticker de la Acción: (sólo si indicaste Otro)", value="", key="ticker_manual_input_key").upper()
 
     ticker_to_add_accion = ""
     if ticker_choice == "Otro":
@@ -489,7 +489,7 @@ with st.sidebar.form("acciones_form"):
         ticker_to_add_accion = match.group(1) if match else ""
     
     cantidad_input_accion = st.number_input("Cantidad", min_value=0.00000001, value=1.0, step=0.00000001, format="%.8f", key="cantidad_add_input_accion")
-    precio_compra_input_accion = st.number_input("Precio de Compra", min_value=0.01, value=100.0, format="%.2f", key="precio_add_input_accion")
+    precio_compra_input_accion = st.number_input("Precio de Compra por acción", min_value=0.01, value=100.0, format="%.2f", key="precio_add_input_accion")
     compra_currency_accion = st.selectbox("Divisa de Compra", options=SUPPORTED_CURRENCIES, key="currency_select_accion")
     nombre_personalizado_accion = st.text_input("Nombre Personalizado (Opcional)", key="nombre_add_input_accion")
     
